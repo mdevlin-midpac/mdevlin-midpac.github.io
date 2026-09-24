@@ -6797,8 +6797,8 @@ const AMBIENT_MAX = 18000;     // ...and max
 /* How he behaves once "stay loaded" is switched on. Tune freely. */
 const STALK = {
   chance: 0.7,          // 0..1 — odds he surfaces on any one interesting page
-  minDelayMs: 4000,     // earliest he might resurface after you navigate
-  maxDelayMs: 11000,    // latest
+  minDelayMs: 2000,     // earliest he might resurface after you navigate
+  maxDelayMs: 8000,    // latest
   oncePerPage: true,    // don't pop up twice on the same URL
 };
 
@@ -6822,14 +6822,39 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
  * Banishment, stored per-origin so it applies to every page
  * ------------------------------------------------------------------ */
 const BANISH_KEY = "clippy:banished";
+const BANISH_TIME_KEY = "clippy:banishedTime";
 const STAY_KEY = "clippy:stayLoaded";
+const BANISH_DURATION_MS = 60 * 60 * 1000; // 1 hour
+
 const banished = {
-  get() { try { return localStorage.getItem(BANISH_KEY) === "1"; } catch { return false; } },
-  set() { try { localStorage.setItem(BANISH_KEY, "1"); } catch {} },
-  clear() { try { localStorage.removeItem(BANISH_KEY); } catch {} },
+  get() {
+    try {
+      if (localStorage.getItem(BANISH_KEY) !== "1") return false;
+      const t = Number(localStorage.getItem(BANISH_TIME_KEY));
+      if (!t || Date.now() - t >= BANISH_DURATION_MS) {
+        this.clear();
+        return false;
+      }
+      return true;
+    } catch { return false; }
+  },
+  set() {
+    try {
+      localStorage.setItem(BANISH_KEY, "1");
+      localStorage.setItem(BANISH_TIME_KEY, String(Date.now()));
+    } catch {}
+  },
+  clear() {
+    try {
+      localStorage.removeItem(BANISH_KEY);
+      localStorage.removeItem(BANISH_TIME_KEY);
+    } catch {}
+  },
 };
 window.clippyReturn = () => { banished.clear(); location.reload(); };
 window.clippyStalk = STALK;   // tweak from the console during class, e.g. clippyStalk.chance = 1
+
+window.getClippyContext = () => { return document; };
 
 /* ------------------------------------------------------------------ *
  * Low-level helpers that reach into the library
